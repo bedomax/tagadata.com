@@ -190,6 +190,9 @@ async function loadNews() {
     const data = await res.json();
     renderTags(data.tags || []);
     let articles = data.articles;
+    const hasVideos = articles.some(a => a.url && a.url.includes('youtube.com'));
+    const videoBtn = document.querySelector('.sort-pill[data-sort="video"]');
+    if (videoBtn) videoBtn.style.display = hasVideos ? '' : 'none';
     if (currentSort === 'video') {
       articles = articles.filter(a => a.url && a.url.includes('youtube.com'));
     }
