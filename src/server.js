@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
-const { getNews, getCount } = require('./db');
+const db = require('./db');
+const { getNews, getCount } = db;
 const { fetchAll } = require('./aggregator');
 const { extractTags, getArticleIdsByTag } = require('./tags');
 
@@ -10,15 +11,8 @@ const FETCH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 const VALID_COUNTRIES = ['cl', 'ec'];
 
-// In-memory cache: serves stale data while DB rebuilds after cold start
-const cache = {};
-
 // Track last successful fetch timestamp
 let lastFetchAt = null;
-
-function buildCacheKey(params) {
-  return JSON.stringify(params);
-}
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
@@ -45,43 +39,38 @@ app.get('/api/geo', async (req, res) => {
 });
 
 // API: Get news articles (country-filtered)
-app.get('/api/news', (req, res) => {
-  const { source, tag, limit, offset, sort, country } = req.query;
+app.get('/api/news', async (req, res) => {
+  try {
+    const { source, tag, limit, offset, sort, country } = req.query;
 
-  // Validate country, default to 'cl'
-  const cc = VALID_COUNTRIES.includes(country) ? country : 'cl';
+    // Validate country, default to 'cl'
+    const cc = VALID_COUNTRIES.includes(country) ? country : 'cl';
 
-  let ids;
-  if (tag) {
-    ids = getArticleIdsByTag(tag, cc);
-    if (ids.length === 0) {
-      return res.json({ articles: [], tags: extractTags(72, 15, cc), count: 0, country: cc });
+    let ids;
+    if (tag) {
+      ids = await getArticleIdsByTag(tag, cc);
+      if (ids.length === 0) {
+        const tags = await extractTags(72, 15, cc);
+        return res.json({ articles: [], tags, count: 0, country: cc, last_updated: lastFetchAt });
+      }
     }
+
+    const articles = await getNews({
+      source: source || undefined,
+      country: cc,
+      ids,
+      limit: limit ? parseInt(limit, 10) : 15,
+      offset: offset ? parseInt(offset, 10) : 0,
+      sort: sort === 'score' ? 'score' : 'date',
+    });
+    const tags = await extractTags(72, 15, cc);
+    const count = tag ? ids.length : await getCount({ source: source || undefined, country: cc });
+
+    res.json({ articles, tags, count, country: cc, last_updated: lastFetchAt });
+  } catch (err) {
+    console.error('[API] /api/news error:', err.message);
+    res.status(500).json({ articles: [], tags: [], count: 0, error: err.message });
   }
-
-  const articles = getNews({
-    source: source || undefined,
-    country: cc,
-    ids,
-    limit: limit ? parseInt(limit, 10) : 15,
-    offset: offset ? parseInt(offset, 10) : 0,
-    sort: sort === 'score' ? 'score' : 'date',
-  });
-  const tags = extractTags(72, 15, cc);
-  const count = tag ? ids.length : getCount({ source: source || undefined, country: cc });
-
-  const result = { articles, tags, count, country: cc, last_updated: lastFetchAt };
-
-  // Update cache with fresh data
-  const cacheKey = buildCacheKey({ source, tag, limit, offset, sort, country: cc });
-  if (articles.length > 0) {
-    cache[cacheKey] = result;
-  } else if (cache[cacheKey]) {
-    // DB is empty (cold start / rebuilding) — serve cached response
-    return res.json(cache[cacheKey]);
-  }
-
-  res.json(result);
 });
 
 // API: Trigger manual fetch
@@ -101,6 +90,9 @@ app.get('/', (req, res) => {
 
 // Start server
 app.listen(PORT, async () => {
+  // Initialize database schema
+  await db.init();
+
   console.log(`tagadata.com running at http://localhost:${PORT}`);
 
   // Initial fetch on startup (non-blocking — server responds immediately)

@@ -26,8 +26,8 @@ const MIN_OCCURRENCES = 2;
  * Extract top tags from recent article titles.
  * Returns array of { tag, count } sorted by count desc.
  */
-function extractTags(hoursBack = 72, maxTags = 15, country = null) {
-  const articles = db.getAllRecent(hoursBack, country);
+async function extractTags(hoursBack = 72, maxTags = 15, country = null) {
+  const articles = await db.getAllRecent(hoursBack, country);
   const freq = new Map();
 
   for (const a of articles) {
@@ -58,9 +58,9 @@ function extractTags(hoursBack = 72, maxTags = 15, country = null) {
 /**
  * Get article IDs whose titles contain the given tag.
  */
-function getArticleIdsByTag(tag, country = null) {
+async function getArticleIdsByTag(tag, country = null) {
   const normalized = tag.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const all = db.getAllRecent(72, country);
+  const all = await db.getAllRecent(72, country);
   return all
     .filter(a => {
       const title = a.title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');

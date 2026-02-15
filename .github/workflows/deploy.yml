@@ -44,4 +44,5 @@ jobs:
           gcloud run deploy ${{ env.SERVICE }} \
             --image ${{ env.IMAGE }} \
             --region ${{ env.REGION }} \
-            --platform managed
+            --platform managed \
+            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}"
