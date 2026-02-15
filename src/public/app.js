@@ -13,11 +13,13 @@ const SOURCE_COLORS_BY_COUNTRY = {
     'BioBioChile': 'biobio', 'Cooperativa': 'coop', 'La Tercera': 'tercera',
     'CIPER Chile': 'ciper', 'The Clinic': 'clinic', 'Interferencia': 'interf',
     'El Desconcierto': 'descon',
+    'T13': 't13', 'CNN Chile': 'cnncl', 'CHV Noticias': 'chv', 'Meganoticias': 'mega',
   },
   ec: {
     'El Comercio': 'comercio', 'El Universo': 'universo', 'Metro Ecuador': 'metro',
     'GK': 'gk', 'La Barra Espaciadora': 'barra', 'Plan V': 'planv',
     'Confirmado': 'confirm',
+    'Ecuavisa': 'ecuavisa', 'Teleamazonas': 'teleamaz',
   },
 };
 
@@ -65,17 +67,24 @@ if (!localStorage.getItem('country')) {
   setCountry(currentCountry);
 }
 
-// Theme toggle
-const savedTheme = localStorage.getItem('theme') || 'dark';
-document.documentElement.setAttribute('data-theme', savedTheme);
-updateThemeIcon(savedTheme);
+// Theme — auto by time of day (6am-6pm = light, 6pm-6am = dark)
+function getAutoTheme() {
+  const h = new Date().getHours();
+  return (h >= 6 && h < 18) ? 'light' : 'dark';
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  updateThemeIcon(theme);
+}
+
+const autoTheme = getAutoTheme();
+applyTheme(autoTheme);
 
 document.getElementById('theme-toggle').addEventListener('click', () => {
   const current = document.documentElement.getAttribute('data-theme') || 'dark';
   const next = current === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('theme', next);
-  updateThemeIcon(next);
+  applyTheme(next);
   loadNews();
 });
 
@@ -90,6 +99,14 @@ function isDark() {
 function getSourceColors() {
   return SOURCE_COLORS_BY_COUNTRY[currentCountry] || SOURCE_COLORS_BY_COUNTRY.cl;
 }
+
+// About modal
+const aboutOverlay = document.getElementById('about-overlay');
+document.getElementById('about-btn').addEventListener('click', () => aboutOverlay.classList.add('active'));
+document.getElementById('about-close').addEventListener('click', () => aboutOverlay.classList.remove('active'));
+aboutOverlay.addEventListener('click', (e) => {
+  if (e.target === aboutOverlay) aboutOverlay.classList.remove('active');
+});
 
 // ---- Collage layouts using 12-column grid ----
 // Desktop: 12 cols, varied sizes for a true collage feel
@@ -130,34 +147,26 @@ const LAYOUT_6 = [
   { col: '4 / span 3',  row: '8 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
 ];
 
-// Mobile: 4 cols, scrollable
-const LAYOUT_4 = [
-  { col: '1 / span 4',  row: 'auto', cls: 'hero',    titleRem: 1.3,  fw: 700, clamp: 3, color: '#fff' },
-  { col: '1 / span 2',  row: 'auto', cls: 'feature', titleRem: 0.95, fw: 600, clamp: 2, color: '#eee' },
-  { col: '3 / span 2',  row: 'auto', cls: 'feature', titleRem: 0.95, fw: 600, clamp: 2, color: '#ddd' },
-  { col: '1 / span 3',  row: 'auto', cls: 'compact', titleRem: 0.85, fw: 500, clamp: 2, color: '#ccc' },
-  { col: '4 / span 1',  row: 'auto', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#ccc' },
-  { col: '1 / span 2',  row: 'auto', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
-  { col: '3 / span 2',  row: 'auto', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
-  { col: '1 / span 4',  row: 'auto', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 2, color: '#aaa' },
-  { col: '1 / span 2',  row: 'auto', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
-  { col: '3 / span 2',  row: 'auto', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
-  { col: '1 / span 4',  row: 'auto', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 2, color: '#aaa' },
-  { col: '1 / span 2',  row: 'auto', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
-  { col: '3 / span 2',  row: 'auto', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
-  { col: '1 / span 2',  row: 'auto', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
-  { col: '3 / span 2',  row: 'auto', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
-];
-
-// Small mobile: 2 cols
-const LAYOUT_2 = Array.from({ length: 15 }, (_, i) => ({
-  col: i === 0 ? '1 / span 2' : `${(i % 2) + 1} / span 1`,
+// Mobile: single column list for readability
+const LAYOUT_4 = Array.from({ length: 15 }, (_, i) => ({
+  col: '1 / span 4',
   row: 'auto',
   cls: i === 0 ? 'hero' : i < 3 ? 'feature' : 'compact',
-  titleRem: i === 0 ? 1.2 : i < 3 ? 0.95 : 0.85,
+  titleRem: i === 0 ? 1.2 : i < 3 ? 1.0 : 0.9,
   fw: i === 0 ? 700 : i < 3 ? 600 : 400,
-  clamp: i === 0 ? 3 : 2,
-  color: i === 0 ? '#fff' : i < 3 ? '#ddd' : '#aaa',
+  clamp: i === 0 ? 4 : 3,
+  color: i === 0 ? '#fff' : i < 3 ? '#eee' : '#ccc',
+}));
+
+// Small mobile: single column
+const LAYOUT_2 = Array.from({ length: 15 }, (_, i) => ({
+  col: '1 / span 2',
+  row: 'auto',
+  cls: i === 0 ? 'hero' : i < 3 ? 'feature' : 'compact',
+  titleRem: i === 0 ? 1.1 : i < 3 ? 0.95 : 0.85,
+  fw: i === 0 ? 700 : i < 3 ? 600 : 400,
+  clamp: i === 0 ? 4 : 3,
+  color: i === 0 ? '#fff' : i < 3 ? '#eee' : '#ccc',
 }));
 
 function getLayout() {
@@ -172,14 +181,20 @@ async function loadNews() {
   const params = new URLSearchParams();
   params.set('country', currentCountry);
   if (currentTag) params.set('tag', currentTag);
-  params.set('sort', currentSort);
+  const apiSort = currentSort === 'video' ? 'date' : currentSort;
+  params.set('sort', apiSort);
+  if (currentSort === 'video') params.set('limit', '200');
 
   try {
     const res = await fetch(`/api/news?${params}`);
     const data = await res.json();
     renderTags(data.tags || []);
-    renderBoard(data.articles);
-    document.getElementById('count').textContent = data.count;
+    let articles = data.articles;
+    if (currentSort === 'video') {
+      articles = articles.filter(a => a.url && a.url.includes('youtube.com'));
+    }
+    renderBoard(articles);
+    document.getElementById('count').textContent = currentSort === 'video' ? articles.length : data.count;
   } catch {
     document.getElementById('content').innerHTML =
       '<p class="empty">Error al cargar. Intenta refrescar.</p>';
@@ -217,6 +232,37 @@ function sourceDot(name) {
 
 function sourceTag(name) {
   return `<span class="source-tag">${sourceDot(name)}${esc(name)}</span>`;
+}
+
+function isYouTube(url) {
+  return url && url.includes('youtube.com');
+}
+
+function getYouTubeId(url) {
+  try {
+    const u = new URL(url);
+    return u.searchParams.get('v');
+  } catch { return null; }
+}
+
+function openVideoModal(videoId) {
+  const overlay = document.createElement('div');
+  overlay.className = 'video-modal-overlay';
+  overlay.innerHTML = `
+    <div class="video-modal">
+      <button class="video-modal-close">&times;</button>
+      <iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0"
+        allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target.classList.contains('video-modal-close')) {
+      overlay.remove();
+    }
+  });
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', esc); }
+  });
 }
 
 function renderBoard(articles) {
@@ -288,11 +334,18 @@ function renderBoard(articles) {
       ? `<div class="cluster-sources">${a._others.map(src => sourceTag(src)).join('')}</div>`
       : '';
 
-    return `<article class="card ${layout.cls}"
+    const isVideo = isYouTube(a.url);
+    const videoId = isVideo ? getYouTubeId(a.url) : null;
+    const videoIcon = isVideo ? '<span class="video-icon">&#9654;</span>' : '';
+    const titleClick = isVideo && videoId
+      ? `onclick="event.preventDefault();openVideoModal('${videoId}')" href="${esc(a.url)}"`
+      : `href="${esc(a.url)}" target="_blank" rel="noopener"`;
+
+    return `<article class="card ${layout.cls} ${isVideo ? 'card-video' : ''}"
       style="grid-column:${layout.col};grid-row:${layout.row}">
       ${badge}
-      <a class="card-title" href="${esc(a.url)}" target="_blank" rel="noopener"
-         style="font-size:${titleRem}rem;font-weight:${fw};color:${tc};-webkit-line-clamp:${layout.clamp};line-clamp:${layout.clamp}">${esc(a.title)}</a>
+      <a class="card-title" ${titleClick}
+         style="font-size:${titleRem}rem;font-weight:${fw};color:${tc};-webkit-line-clamp:${layout.clamp};line-clamp:${layout.clamp}">${videoIcon}${esc(a.title)}</a>
       <div class="card-footer">
         ${sourceTag(a.source)}
         ${a.published_at ? `<span class="card-time">${timeAgo(a.published_at)}</span>` : ''}

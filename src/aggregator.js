@@ -3,7 +3,7 @@ const { clusterAndScore } = require('./cluster');
 
 // Register all sources here, grouped by country
 const allSources = [
-  // Chile
+  // Chile — RSS
   require('./sources/cl/biobiochile'),
   require('./sources/cl/cooperativa'),
   require('./sources/cl/latercera'),
@@ -11,7 +11,12 @@ const allSources = [
   require('./sources/cl/theclinic'),
   require('./sources/cl/interferencia'),
   require('./sources/cl/eldesconcierto'),
-  // Ecuador
+  // Chile — YouTube
+  require('./sources/cl/t13'),
+  require('./sources/cl/cnnchile'),
+  require('./sources/cl/chvnoticias'),
+  require('./sources/cl/meganoticias'),
+  // Ecuador — RSS
   require('./sources/ec/elcomercio'),
   require('./sources/ec/eluniverso'),
   require('./sources/ec/metroecuador'),
@@ -19,6 +24,9 @@ const allSources = [
   require('./sources/ec/labarraespaciadora'),
   require('./sources/ec/planv'),
   require('./sources/ec/confirmado'),
+  // Ecuador — YouTube
+  require('./sources/ec/ecuavisa'),
+  require('./sources/ec/teleamazonas'),
 ];
 
 function getSourcesByCountry(country) {

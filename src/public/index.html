@@ -43,12 +43,29 @@
       <div class="sort-pills">
         <button class="sort-pill active" data-sort="date">recientes</button>
         <button class="sort-pill" data-sort="score">trending</button>
+        <button class="sort-pill" data-sort="video">videos</button>
       </div>
       <select class="country-select" id="country-select"></select>
       <button class="theme-toggle" id="theme-toggle" title="Cambiar tema">&#9788;</button>
+      <button class="about-btn" id="about-btn" title="Acerca de">?</button>
     </div>
 
     <div id="content"><p class="loading">Cargando noticias</p></div>
+
+    <div class="about-overlay" id="about-overlay">
+      <div class="about-modal">
+        <button class="about-close" id="about-close">&times;</button>
+        <h2>taga<span class="accent">data</span></h2>
+        <p>Soy <strong>Bedo</strong>, indie developer chileno-ecuatoriano.</p>
+        <p>Este proyecto lo hice por primera vez hace 12 a&ntilde;os, cuando no exist&iacute;a la AI. Me tom&oacute; como 6 meses construirlo. Tuve que bajarlo porque no ten&iacute;a recursos ni tiempo para mantenerlo.</p>
+        <p>Ahora, 2026, en la era del AI, lo rehice en 6 horas. Y esta vez me quedo.</p>
+        <p>Lo hice porque me gusta saber qu&eacute; est&aacute; pasando en el mundo y necesitaba una plataforma para informarme r&aacute;pido. Tengo muchas ideas todav&iacute;a y voy a seguir mejorando esto.</p>
+        <div class="about-links">
+          <a href="https://x.com/bedomax" target="_blank" rel="noopener">@bedomax en X</a>
+          <a href="https://instagram.com/bedomax" target="_blank" rel="noopener">@bedomax en Instagram</a>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>
