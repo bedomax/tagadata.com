@@ -13,6 +13,9 @@ const VALID_COUNTRIES = ['cl', 'ec'];
 // In-memory cache: serves stale data while DB rebuilds after cold start
 const cache = {};
 
+// Track last successful fetch timestamp
+let lastFetchAt = null;
+
 function buildCacheKey(params) {
   return JSON.stringify(params);
 }
@@ -67,7 +70,7 @@ app.get('/api/news', (req, res) => {
   const tags = extractTags(72, 15, cc);
   const count = tag ? ids.length : getCount({ source: source || undefined, country: cc });
 
-  const result = { articles, tags, count, country: cc };
+  const result = { articles, tags, count, country: cc, last_updated: lastFetchAt };
 
   // Update cache with fresh data
   const cacheKey = buildCacheKey({ source, tag, limit, offset, sort, country: cc });
@@ -102,10 +105,14 @@ app.listen(PORT, async () => {
 
   // Initial fetch on startup (non-blocking — server responds immediately)
   console.log('Running initial fetch...');
-  fetchAll().catch((err) => console.error('Initial fetch error:', err));
+  fetchAll()
+    .then(() => { lastFetchAt = new Date().toISOString(); })
+    .catch((err) => console.error('Initial fetch error:', err));
 
   // Schedule recurring fetch every 5 minutes
   setInterval(() => {
-    fetchAll().catch((err) => console.error('Scheduled fetch error:', err));
+    fetchAll()
+      .then(() => { lastFetchAt = new Date().toISOString(); })
+      .catch((err) => console.error('Scheduled fetch error:', err));
   }, FETCH_INTERVAL_MS);
 });

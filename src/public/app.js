@@ -177,6 +177,16 @@ function getLayout() {
   return LAYOUT_12;
 }
 
+function renderLastUpdated(iso) {
+  const el = document.querySelector('.topbar-meta');
+  if (!el) return;
+  if (!iso) {
+    el.textContent = 'actualizando…';
+    return;
+  }
+  el.innerHTML = `actualizado <strong>${timeAgo(iso)}</strong>`;
+}
+
 async function loadNews() {
   const params = new URLSearchParams();
   params.set('country', currentCountry);
@@ -189,6 +199,7 @@ async function loadNews() {
     const res = await fetch(`/api/news?${params}`);
     const data = await res.json();
     renderTags(data.tags || []);
+    renderLastUpdated(data.last_updated);
     let articles = data.articles;
 
     // If server just started and has no articles yet, retry after a few seconds
