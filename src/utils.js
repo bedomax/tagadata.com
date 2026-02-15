@@ -22,4 +22,68 @@ function normalizeUrl(rawUrl) {
   }
 }
 
-module.exports = { normalizeUrl };
+const https = require('https');
+const http = require('http');
+const zlib = require('zlib');
+const Parser = require('rss-parser');
+
+const BROWSER_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+  Accept:
+    'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.5',
+  'Accept-Encoding': 'gzip, deflate',
+  Connection: 'keep-alive',
+};
+
+function httpGet(url, timeoutMs = 20000) {
+  const mod = url.startsWith('https') ? https : http;
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      req.destroy();
+      reject(new Error(`Request timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    const req = mod.get(url, { headers: BROWSER_HEADERS }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        clearTimeout(timer);
+        return httpGet(res.headers.location, timeoutMs).then(resolve, reject);
+      }
+      if (res.statusCode !== 200) {
+        clearTimeout(timer);
+        res.resume();
+        return reject(new Error(`HTTP ${res.statusCode}`));
+      }
+
+      let stream = res;
+      if (res.headers['content-encoding'] === 'gzip') {
+        stream = res.pipe(zlib.createGunzip());
+      }
+
+      const chunks = [];
+      stream.on('data', (c) => chunks.push(c));
+      stream.on('end', () => {
+        clearTimeout(timer);
+        resolve(Buffer.concat(chunks).toString());
+      });
+      stream.on('error', (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+    });
+
+    req.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
+async function fetchRSS(url) {
+  const xml = await httpGet(url);
+  const parser = new Parser();
+  return parser.parseString(xml);
+}
+
+module.exports = { normalizeUrl, fetchRSS, httpGet };

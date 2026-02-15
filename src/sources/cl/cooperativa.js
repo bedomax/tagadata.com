@@ -1,14 +1,11 @@
-const Parser = require('rss-parser');
-const { normalizeUrl } = require('../../utils');
-
-const parser = new Parser();
+const { normalizeUrl, fetchRSS } = require('../../utils');
 const FEED_URL = 'https://www.cooperativa.cl/noticias/site/tax/port/all/rss____1.xml';
 const SOURCE_NAME = 'Cooperativa';
 const COUNTRY = 'cl';
 
 async function fetch() {
   console.log(`[${SOURCE_NAME}] Fetching RSS feed...`);
-  const feed = await parser.parseURL(FEED_URL);
+  const feed = await fetchRSS(FEED_URL);
 
   const articles = feed.items.map((item) => ({
     title: item.title?.trim(),
