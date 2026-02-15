@@ -1,5 +1,5 @@
 const { normalizeUrl, fetchRSS } = require('../../utils');
-const FEED_URL = 'https://www.latercera.com/rss/';
+const FEED_URL = 'https://www.latercera.com/arc/outboundfeeds/rss/?outputType=xml';
 const SOURCE_NAME = 'La Tercera';
 const COUNTRY = 'cl';
 

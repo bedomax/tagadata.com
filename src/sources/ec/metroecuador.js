@@ -1,5 +1,5 @@
 const { normalizeUrl, fetchRSS } = require('../../utils');
-const FEED_URL = 'https://www.metroecuador.com.ec/rss.xml';
+const FEED_URL = 'https://www.metroecuador.com.ec/arc/outboundfeeds/rss/?outputType=xml';
 const SOURCE_NAME = 'Metro Ecuador';
 const COUNTRY = 'ec';
 

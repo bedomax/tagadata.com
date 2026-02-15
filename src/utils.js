@@ -40,43 +40,57 @@ const BROWSER_HEADERS = {
 function httpGet(url, timeoutMs = 20000) {
   const mod = url.startsWith('https') ? https : http;
   return new Promise((resolve, reject) => {
+    let req;
     const timer = setTimeout(() => {
-      req.destroy();
+      if (req) req.destroy();
       reject(new Error(`Request timed out after ${timeoutMs}ms`));
     }, timeoutMs);
 
-    const req = mod.get(url, { headers: BROWSER_HEADERS }, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        clearTimeout(timer);
-        return httpGet(res.headers.location, timeoutMs).then(resolve, reject);
-      }
-      if (res.statusCode !== 200) {
-        clearTimeout(timer);
-        res.resume();
-        return reject(new Error(`HTTP ${res.statusCode}`));
-      }
+    try {
+      req = mod.get(url, { headers: BROWSER_HEADERS }, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          clearTimeout(timer);
+          // Handle relative redirects by resolving against the original URL
+          let redirectUrl = res.headers.location;
+          try {
+            redirectUrl = new URL(res.headers.location, url).href;
+          } catch {}
+          return httpGet(redirectUrl, timeoutMs).then(resolve, reject);
+        }
+        if (res.statusCode !== 200) {
+          clearTimeout(timer);
+          res.resume();
+          return reject(new Error(`HTTP ${res.statusCode}`));
+        }
 
-      let stream = res;
-      if (res.headers['content-encoding'] === 'gzip') {
-        stream = res.pipe(zlib.createGunzip());
-      }
+        let stream = res;
+        const encoding = res.headers['content-encoding'];
+        if (encoding === 'gzip') {
+          stream = res.pipe(zlib.createGunzip());
+        } else if (encoding === 'deflate') {
+          stream = res.pipe(zlib.createInflate());
+        }
 
-      const chunks = [];
-      stream.on('data', (c) => chunks.push(c));
-      stream.on('end', () => {
-        clearTimeout(timer);
-        resolve(Buffer.concat(chunks).toString());
+        const chunks = [];
+        stream.on('data', (c) => chunks.push(c));
+        stream.on('end', () => {
+          clearTimeout(timer);
+          resolve(Buffer.concat(chunks).toString());
+        });
+        stream.on('error', (err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
       });
-      stream.on('error', (err) => {
+
+      req.on('error', (err) => {
         clearTimeout(timer);
         reject(err);
       });
-    });
-
-    req.on('error', (err) => {
+    } catch (err) {
       clearTimeout(timer);
       reject(err);
-    });
+    }
   });
 }
 
