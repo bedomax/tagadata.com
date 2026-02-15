@@ -142,7 +142,17 @@ function getClusterSources(clusterId) {
   ).pluck().all({ cluster_id: clusterId });
 }
 
+function cleanupOld(hoursKeep = 48) {
+  const result = db.prepare(
+    `DELETE FROM news WHERE published_at < datetime('now', '-' || @hours || ' hours')`
+  ).run({ hours: hoursKeep });
+  if (result.changes > 0) {
+    console.log(`[DB] Cleaned up ${result.changes} articles older than ${hoursKeep}h`);
+  }
+  return result.changes;
+}
+
 module.exports = {
   db, insertMany, getNews, getSources, getCount,
-  getAllRecent, updateClusters, getClusterSources,
+  getAllRecent, updateClusters, getClusterSources, cleanupOld,
 };

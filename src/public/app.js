@@ -190,6 +190,20 @@ async function loadNews() {
     const data = await res.json();
     renderTags(data.tags || []);
     let articles = data.articles;
+
+    // If server just started and has no articles yet, retry after a few seconds
+    if (!articles.length && !loadNews._retries) {
+      loadNews._retries = 0;
+    }
+    if (!articles.length && (loadNews._retries || 0) < 5) {
+      loadNews._retries = (loadNews._retries || 0) + 1;
+      document.getElementById('content').innerHTML =
+        '<p class="empty">Cargando noticias\u2026</p>';
+      setTimeout(loadNews, 5000);
+      return;
+    }
+    loadNews._retries = 0;
+
     const hasVideos = articles.some(a => a.url && a.url.includes('youtube.com'));
     const videoBtn = document.querySelector('.sort-pill[data-sort="video"]');
     if (videoBtn) videoBtn.style.display = hasVideos ? '' : 'none';

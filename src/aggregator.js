@@ -1,4 +1,4 @@
-const { insertMany } = require('./db');
+const { insertMany, cleanupOld } = require('./db');
 const { clusterAndScore } = require('./cluster');
 
 // Register all sources here, grouped by country
@@ -67,6 +67,9 @@ async function fetchAll() {
 
   // Run clustering after inserting new articles
   const clusterResult = await clusterAndScore();
+
+  // Clean up articles older than 48h
+  cleanupOld(48);
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log(`[Aggregator] Done in ${elapsed}s — ${totalInserted} new articles inserted (${totalParsed} parsed)`);
