@@ -211,7 +211,6 @@ async function loadNews() {
       articles = articles.filter(a => a.url && a.url.includes('youtube.com'));
     }
     renderBoard(articles);
-    document.getElementById('count').textContent = currentSort === 'video' ? articles.length : data.count;
   } catch {
     document.getElementById('content').innerHTML =
       '<p class="empty">Error al cargar. Intenta refrescar.</p>';
