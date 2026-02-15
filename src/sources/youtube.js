@@ -23,15 +23,13 @@ function createYouTubeSource(channelId, sourceName, country) {
   async function fetchFeed() {
     console.log(`[${sourceName}] Fetching YouTube feed...`);
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const timeoutMs = 20000;
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`YouTube timeout after ${timeoutMs}ms`)), timeoutMs)
+    );
 
-    try {
-      const res = await fetch(FEED_URL, {
-        headers: BROWSER_HEADERS,
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
+    const doFetch = async () => {
+      const res = await fetch(FEED_URL, { headers: BROWSER_HEADERS });
 
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
@@ -43,7 +41,7 @@ function createYouTubeSource(channelId, sourceName, country) {
 
       const cutoff = Date.now() - MAX_AGE_HOURS * 60 * 60 * 1000;
 
-      const articles = feed.items
+      return feed.items
         .filter((item) => {
           const pub = item.pubDate ? new Date(item.pubDate).getTime() : 0;
           return pub >= cutoff;
@@ -56,15 +54,14 @@ function createYouTubeSource(channelId, sourceName, country) {
             ? new Date(item.pubDate).toISOString()
             : null,
         }));
+    };
 
-      console.log(
-        `[${sourceName}] Parsed ${articles.length} videos (last 24h)`
-      );
-      return articles;
-    } catch (err) {
-      clearTimeout(timeout);
-      throw err;
-    }
+    const articles = await Promise.race([doFetch(), timeoutPromise]);
+
+    console.log(
+      `[${sourceName}] Parsed ${articles.length} videos (last 24h)`
+    );
+    return articles;
   }
 
   return { fetch: fetchFeed, SOURCE_NAME: sourceName, FEED_URL, COUNTRY: country };
