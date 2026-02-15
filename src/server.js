@@ -10,6 +10,13 @@ const FETCH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 const VALID_COUNTRIES = ['cl', 'ec'];
 
+// In-memory cache: serves stale data while DB rebuilds after cold start
+const cache = {};
+
+function buildCacheKey(params) {
+  return JSON.stringify(params);
+}
+
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -60,7 +67,18 @@ app.get('/api/news', (req, res) => {
   const tags = extractTags(72, 15, cc);
   const count = tag ? ids.length : getCount({ source: source || undefined, country: cc });
 
-  res.json({ articles, tags, count, country: cc });
+  const result = { articles, tags, count, country: cc };
+
+  // Update cache with fresh data
+  const cacheKey = buildCacheKey({ source, tag, limit, offset, sort, country: cc });
+  if (articles.length > 0) {
+    cache[cacheKey] = result;
+  } else if (cache[cacheKey]) {
+    // DB is empty (cold start / rebuilding) — serve cached response
+    return res.json(cache[cacheKey]);
+  }
+
+  res.json(result);
 });
 
 // API: Trigger manual fetch
@@ -82,9 +100,9 @@ app.get('/', (req, res) => {
 app.listen(PORT, async () => {
   console.log(`tagadata.com running at http://localhost:${PORT}`);
 
-  // Initial fetch on startup
+  // Initial fetch on startup (non-blocking — server responds immediately)
   console.log('Running initial fetch...');
-  await fetchAll();
+  fetchAll().catch((err) => console.error('Initial fetch error:', err));
 
   // Schedule recurring fetch every 5 minutes
   setInterval(() => {
