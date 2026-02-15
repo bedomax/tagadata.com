@@ -1,6 +1,13 @@
 const Parser = require('rss-parser');
 
-const parser = new Parser();
+const parser = new Parser({
+  timeout: 30000,
+  headers: {
+    'User-Agent':
+      'Mozilla/5.0 (compatible; Tagadata/1.0; +https://tagadata.com)',
+    Accept: 'application/xml, text/xml, */*',
+  },
+});
 const MAX_AGE_HOURS = 24;
 
 function createYouTubeSource(channelId, sourceName, country) {
