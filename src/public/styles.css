@@ -244,9 +244,11 @@ h1 .accent { color: #f97316; }
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 2rem 2.5rem;
-  max-width: 500px;
+  max-width: 640px;
   width: 100%;
   position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .about-modal h2 {
@@ -264,6 +266,13 @@ h1 .accent { color: #f97316; }
 }
 
 .about-modal strong { color: var(--text); }
+
+.about-diagram {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  margin: 1rem 0;
+}
 
 .about-links {
   display: flex;
