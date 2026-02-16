@@ -12,6 +12,7 @@ env:
   PROJECT_ID: bedomax
   REGION: us-central1
   SERVICE: tagadata
+  JOB: tagadata-fetch
   IMAGE: us-central1-docker.pkg.dev/bedomax/docker-repo/tagadata
 
 jobs:
@@ -39,7 +40,7 @@ jobs:
           docker build -t ${{ env.IMAGE }} .
           docker push ${{ env.IMAGE }}
 
-      - name: Deploy to Cloud Run
+      - name: Deploy web service
         run: |
           gcloud run deploy ${{ env.SERVICE }} \
             --image ${{ env.IMAGE }} \
@@ -47,3 +48,41 @@ jobs:
             --platform managed \
             --min-instances 1 \
             --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}"
+
+      - name: Deploy fetch job
+        run: |
+          # Create or update the Cloud Run Job
+          if gcloud run jobs describe ${{ env.JOB }} --region ${{ env.REGION }} &>/dev/null; then
+            gcloud run jobs update ${{ env.JOB }} \
+              --image ${{ env.IMAGE }} \
+              --region ${{ env.REGION }} \
+              --command "node" \
+              --args "src/fetch.js" \
+              --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+              --task-timeout 120s \
+              --max-retries 1
+          else
+            gcloud run jobs create ${{ env.JOB }} \
+              --image ${{ env.IMAGE }} \
+              --region ${{ env.REGION }} \
+              --command "node" \
+              --args "src/fetch.js" \
+              --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+              --task-timeout 120s \
+              --max-retries 1
+          fi
+
+      - name: Setup scheduler (every 5 minutes)
+        run: |
+          # Create or update Cloud Scheduler to trigger the job every 5 min
+          if gcloud scheduler jobs describe ${{ env.JOB }}-schedule --location ${{ env.REGION }} &>/dev/null; then
+            echo "Scheduler already exists"
+          else
+            gcloud scheduler jobs create http ${{ env.JOB }}-schedule \
+              --location ${{ env.REGION }} \
+              --schedule "*/5 * * * *" \
+              --time-zone "UTC" \
+              --http-method POST \
+              --uri "https://${{ env.REGION }}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${{ env.PROJECT_ID }}/jobs/${{ env.JOB }}:run" \
+              --oauth-service-account-email "github-deploy@bedomax.iam.gserviceaccount.com"
+          fi

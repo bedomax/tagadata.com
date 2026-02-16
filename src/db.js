@@ -218,11 +218,17 @@ async function cleanupOld(hoursKeep = 48) {
   return result.rowCount;
 }
 
+async function getLastFetchAt() {
+  const result = await pool.query('SELECT MAX(fetched_at) as last_fetch FROM news');
+  return result.rows[0]?.last_fetch || null;
+}
+
 async function close() {
   await pool.end();
 }
 
 module.exports = {
   init, insertMany, getNews, getSources, getCount,
-  getAllRecent, updateClusters, getClusterSources, cleanupOld, close,
+  getAllRecent, updateClusters, getClusterSources, cleanupOld,
+  getLastFetchAt, close,
 };

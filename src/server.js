@@ -1,23 +1,20 @@
 const express = require('express');
 const path = require('path');
 const db = require('./db');
-const { getNews, getCount } = db;
-const { fetchAll } = require('./aggregator');
+const { getNews, getCount, getLastFetchAt } = db;
 const { extractTags, getArticleIdsByTag } = require('./tags');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const FETCH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_REFRESH_MS = 60 * 1000; // Refresh cache from DB every 60s
 
 const VALID_COUNTRIES = ['cl', 'ec'];
 
-// Track last successful fetch timestamp
-let lastFetchAt = null;
-
 // ---- In-memory cache ----
-// Data only changes every 5 min, so we pre-build responses after each fetch.
-// API serves from memory — zero DB queries on page load.
+// Pre-built responses served from memory. Refreshed every 60s from DB.
+// The fetch job writes to DB independently — server just reads.
 const newsCache = {};
+let lastFetchAt = null;
 
 async function rebuildCache() {
   for (const cc of VALID_COUNTRIES) {
@@ -33,7 +30,7 @@ async function rebuildCache() {
       console.error(`[Cache] Error building cache for ${cc}:`, err.message);
     }
   }
-  console.log('[Cache] Rebuilt for:', Object.keys(newsCache).join(', '));
+  lastFetchAt = await getLastFetchAt();
 }
 
 // Serve static files
@@ -45,7 +42,6 @@ app.get('/api/geo', async (req, res) => {
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
       || req.socket.remoteAddress;
 
-    // Localhost/dev → default to Chile
     if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168')) {
       return res.json({ country: 'cl' });
     }
@@ -67,7 +63,7 @@ app.get('/api/news', async (req, res) => {
     const cc = VALID_COUNTRIES.includes(country) ? country : 'cl';
     const cached = newsCache[cc];
 
-    // Tag filter requires DB lookup (uncommon, acceptable latency)
+    // Tag filter requires DB lookup
     if (tag) {
       const ids = await getArticleIdsByTag(tag, cc);
       if (ids.length === 0) {
@@ -88,7 +84,7 @@ app.get('/api/news', async (req, res) => {
       });
     }
 
-    // Serve from cache — instant response, no DB queries
+    // Serve from cache — instant response
     if (cached) {
       const articles = sort === 'score' ? cached.articlesByScore : cached.articlesByDate;
       const lim = limit ? parseInt(limit, 10) : 15;
@@ -100,7 +96,7 @@ app.get('/api/news', async (req, res) => {
       });
     }
 
-    // Cache miss (first load before fetch completes) — hit DB directly
+    // Cache miss — query DB directly
     const [articles, tags, count] = await Promise.all([
       getNews({
         source: source || undefined, country: cc,
@@ -119,49 +115,22 @@ app.get('/api/news', async (req, res) => {
   }
 });
 
-// API: Trigger manual fetch
-app.post('/api/fetch', async (req, res) => {
-  try {
-    const result = await fetchAll();
-    lastFetchAt = new Date().toISOString();
-    await rebuildCache();
-    res.json({ ok: true, ...result });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
 // Serve the board at root
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start server IMMEDIATELY — initialize DB and cache in background
+// Start server immediately — DB init and cache build in background
 app.listen(PORT, () => {
   console.log(`tagadata.com running at http://localhost:${PORT}`);
 
-  // Initialize DB + cache in background (server already accepts requests)
   db.init()
     .then(() => rebuildCache())
-    .then(() => {
-      console.log('Ready — serving from cache');
+    .then(() => console.log('[Server] Ready — serving from cache'))
+    .catch((err) => console.error('[Server] Startup error:', err));
 
-      // First fetch in background
-      console.log('Running initial fetch...');
-      return fetchAll().then(async () => {
-        lastFetchAt = new Date().toISOString();
-        await rebuildCache();
-      });
-    })
-    .catch((err) => console.error('Startup error:', err));
-
-  // Schedule recurring fetch every 5 minutes
+  // Refresh cache every 60s to pick up new articles from the fetch job
   setInterval(() => {
-    fetchAll()
-      .then(async () => {
-        lastFetchAt = new Date().toISOString();
-        await rebuildCache();
-      })
-      .catch((err) => console.error('Scheduled fetch error:', err));
-  }, FETCH_INTERVAL_MS);
+    rebuildCache().catch((err) => console.error('[Cache] Refresh error:', err));
+  }, CACHE_REFRESH_MS);
 });
