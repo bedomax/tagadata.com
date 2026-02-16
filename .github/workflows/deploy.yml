@@ -45,4 +45,5 @@ jobs:
             --image ${{ env.IMAGE }} \
             --region ${{ env.REGION }} \
             --platform managed \
+            --min-instances 1 \
             --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}"

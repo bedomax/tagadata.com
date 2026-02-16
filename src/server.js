@@ -136,17 +136,16 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start server
-app.listen(PORT, async () => {
-  // Initialize database schema
+// Start server — initialize DB first, then listen immediately
+async function start() {
   await db.init();
-
-  // Pre-build cache from existing DB data (instant page load even before first fetch)
   await rebuildCache();
 
-  console.log(`tagadata.com running at http://localhost:${PORT}`);
+  app.listen(PORT, () => {
+    console.log(`tagadata.com running at http://localhost:${PORT}`);
+  });
 
-  // Initial fetch on startup (non-blocking — server responds immediately)
+  // Initial fetch in background — server is already responding
   console.log('Running initial fetch...');
   fetchAll()
     .then(async () => {
@@ -164,4 +163,9 @@ app.listen(PORT, async () => {
       })
       .catch((err) => console.error('Scheduled fetch error:', err));
   }, FETCH_INTERVAL_MS);
+}
+
+start().catch((err) => {
+  console.error('Fatal startup error:', err);
+  process.exit(1);
 });
