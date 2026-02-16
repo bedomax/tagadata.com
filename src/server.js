@@ -136,23 +136,24 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start server — initialize DB first, then listen immediately
-async function start() {
-  await db.init();
-  await rebuildCache();
+// Start server IMMEDIATELY — initialize DB and cache in background
+app.listen(PORT, () => {
+  console.log(`tagadata.com running at http://localhost:${PORT}`);
 
-  app.listen(PORT, () => {
-    console.log(`tagadata.com running at http://localhost:${PORT}`);
-  });
+  // Initialize DB + cache in background (server already accepts requests)
+  db.init()
+    .then(() => rebuildCache())
+    .then(() => {
+      console.log('Ready — serving from cache');
 
-  // Initial fetch in background — server is already responding
-  console.log('Running initial fetch...');
-  fetchAll()
-    .then(async () => {
-      lastFetchAt = new Date().toISOString();
-      await rebuildCache();
+      // First fetch in background
+      console.log('Running initial fetch...');
+      return fetchAll().then(async () => {
+        lastFetchAt = new Date().toISOString();
+        await rebuildCache();
+      });
     })
-    .catch((err) => console.error('Initial fetch error:', err));
+    .catch((err) => console.error('Startup error:', err));
 
   // Schedule recurring fetch every 5 minutes
   setInterval(() => {
@@ -163,9 +164,4 @@ async function start() {
       })
       .catch((err) => console.error('Scheduled fetch error:', err));
   }, FETCH_INTERVAL_MS);
-}
-
-start().catch((err) => {
-  console.error('Fatal startup error:', err);
-  process.exit(1);
 });
