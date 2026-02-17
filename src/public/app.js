@@ -1,6 +1,10 @@
 let currentTag = null;
 let currentSort = 'date';
 let currentCountry = localStorage.getItem('country') || 'cl';
+let loadedArticles = [];
+let totalCount = 0;
+let isLoadingMore = false;
+const PAGE_SIZE = 30;
 
 // Countries config — add new countries here
 const COUNTRIES = [
@@ -113,38 +117,38 @@ aboutOverlay.addEventListener('click', (e) => {
 const LAYOUT_12 = [
   { col: '1 / span 5',  row: '1 / span 3', cls: 'hero',    titleRem: 2.0,  fw: 700, clamp: 5, color: '#fff' },
   { col: '6 / span 4',  row: '1 / span 2', cls: 'feature', titleRem: 1.2,  fw: 600, clamp: 3, color: '#eee' },
-  { col: '10 / span 3', row: '1 / span 1', cls: 'compact', titleRem: 0.85, fw: 500, clamp: 2, color: '#ccc' },
-  { col: '10 / span 3', row: '2 / span 1', cls: 'compact', titleRem: 0.85, fw: 500, clamp: 2, color: '#ccc' },
-  { col: '6 / span 3',  row: '3 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 2, color: '#aaa' },
+  { col: '10 / span 3', row: '1 / span 1', cls: 'compact', titleRem: 0.85, fw: 500, clamp: 3, color: '#ccc' },
+  { col: '10 / span 3', row: '2 / span 1', cls: 'compact', titleRem: 0.85, fw: 500, clamp: 3, color: '#ccc' },
+  { col: '6 / span 3',  row: '3 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa' },
   { col: '9 / span 4',  row: '3 / span 2', cls: 'feature', titleRem: 1.1,  fw: 600, clamp: 3, color: '#ddd' },
   { col: '1 / span 3',  row: '4 / span 2', cls: 'feature', titleRem: 1.05, fw: 600, clamp: 3, color: '#ddd' },
-  { col: '4 / span 2',  row: '4 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
-  { col: '6 / span 3',  row: '4 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 2, color: '#aaa' },
-  { col: '4 / span 5',  row: '5 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 2, color: '#aaa' },
-  { col: '9 / span 4',  row: '5 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 2, color: '#aaa' },
-  { col: '1 / span 4',  row: '6 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 2, color: '#aaa' },
-  { col: '5 / span 4',  row: '6 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 2, color: '#aaa' },
-  { col: '9 / span 4',  row: '6 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 2, color: '#aaa' },
-  { col: '1 / span 6',  row: '7 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 2, color: '#aaa' },
+  { col: '4 / span 2',  row: '4 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 3, color: '#aaa' },
+  { col: '6 / span 3',  row: '4 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa' },
+  { col: '4 / span 5',  row: '5 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa' },
+  { col: '9 / span 4',  row: '5 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa' },
+  { col: '1 / span 4',  row: '6 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa' },
+  { col: '5 / span 4',  row: '6 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa' },
+  { col: '9 / span 4',  row: '6 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa' },
+  { col: '1 / span 6',  row: '7 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa' },
 ];
 
 // Tablet: 6 cols
 const LAYOUT_6 = [
   { col: '1 / span 4',  row: '1 / span 2', cls: 'hero',    titleRem: 1.5,  fw: 700, clamp: 4, color: '#fff' },
-  { col: '5 / span 2',  row: '1 / span 1', cls: 'feature', titleRem: 0.95, fw: 600, clamp: 2, color: '#eee' },
-  { col: '5 / span 2',  row: '2 / span 1', cls: 'compact', titleRem: 0.85, fw: 500, clamp: 2, color: '#ccc' },
-  { col: '1 / span 3',  row: '3 / span 1', cls: 'feature', titleRem: 1.0,  fw: 600, clamp: 2, color: '#ddd' },
-  { col: '4 / span 3',  row: '3 / span 1', cls: 'compact', titleRem: 0.9,  fw: 500, clamp: 2, color: '#ccc' },
-  { col: '1 / span 2',  row: '4 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
-  { col: '3 / span 2',  row: '4 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
-  { col: '5 / span 2',  row: '4 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
-  { col: '1 / span 3',  row: '5 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 2, color: '#aaa' },
-  { col: '4 / span 3',  row: '5 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 2, color: '#aaa' },
-  { col: '1 / span 6',  row: '6 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 2, color: '#aaa' },
-  { col: '1 / span 3',  row: '7 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
-  { col: '4 / span 3',  row: '7 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
-  { col: '1 / span 3',  row: '8 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
-  { col: '4 / span 3',  row: '8 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 2, color: '#aaa' },
+  { col: '5 / span 2',  row: '1 / span 1', cls: 'feature', titleRem: 0.95, fw: 600, clamp: 3, color: '#eee' },
+  { col: '5 / span 2',  row: '2 / span 1', cls: 'compact', titleRem: 0.85, fw: 500, clamp: 3, color: '#ccc' },
+  { col: '1 / span 3',  row: '3 / span 1', cls: 'feature', titleRem: 1.0,  fw: 600, clamp: 3, color: '#ddd' },
+  { col: '4 / span 3',  row: '3 / span 1', cls: 'compact', titleRem: 0.9,  fw: 500, clamp: 3, color: '#ccc' },
+  { col: '1 / span 2',  row: '4 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 3, color: '#aaa' },
+  { col: '3 / span 2',  row: '4 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 3, color: '#aaa' },
+  { col: '5 / span 2',  row: '4 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 3, color: '#aaa' },
+  { col: '1 / span 3',  row: '5 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa' },
+  { col: '4 / span 3',  row: '5 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa' },
+  { col: '1 / span 6',  row: '6 / span 1', cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa' },
+  { col: '1 / span 3',  row: '7 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 3, color: '#aaa' },
+  { col: '4 / span 3',  row: '7 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 3, color: '#aaa' },
+  { col: '1 / span 3',  row: '8 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 3, color: '#aaa' },
+  { col: '4 / span 3',  row: '8 / span 1', cls: 'compact', titleRem: 0.8,  fw: 400, clamp: 3, color: '#aaa' },
 ];
 
 // Mobile: single column list for readability
@@ -187,26 +191,36 @@ function renderLastUpdated(iso) {
   el.innerHTML = `actualizado <strong>${timeAgo(iso)}</strong>`;
 }
 
-async function loadNews() {
+async function loadNews(append) {
+  if (!append) {
+    loadedArticles = [];
+    totalCount = 0;
+  }
+
   const params = new URLSearchParams();
   params.set('country', currentCountry);
   if (currentTag) params.set('tag', currentTag);
   const apiSort = currentSort === 'video' ? 'date' : currentSort;
   params.set('sort', apiSort);
-  if (currentSort === 'video') params.set('limit', '200');
+  const limit = currentSort === 'video' ? 200 : PAGE_SIZE;
+  params.set('limit', String(limit));
+  params.set('offset', String(loadedArticles.length));
 
   try {
     const res = await fetch(`/api/news?${params}`);
     const data = await res.json();
-    renderTags(data.tags || []);
-    renderLastUpdated(data.last_updated);
+    if (!append) {
+      renderTags(data.tags || []);
+      renderLastUpdated(data.last_updated);
+    }
+    totalCount = data.count || 0;
     let articles = data.articles;
 
     // If server just started and has no articles yet, retry after a few seconds
-    if (!articles.length && !loadNews._retries) {
+    if (!articles.length && !loadedArticles.length && !loadNews._retries) {
       loadNews._retries = 0;
     }
-    if (!articles.length && (loadNews._retries || 0) < 5) {
+    if (!articles.length && !loadedArticles.length && (loadNews._retries || 0) < 5) {
       loadNews._retries = (loadNews._retries || 0) + 1;
       document.getElementById('content').innerHTML =
         '<p class="empty">Cargando noticias\u2026</p>';
@@ -215,16 +229,24 @@ async function loadNews() {
     }
     loadNews._retries = 0;
 
-    const hasVideos = articles.some(a => a.url && a.url.includes('youtube.com'));
+    const hasVideos = articles.some(a => a.url && a.url.includes('youtube.com')) ||
+                      loadedArticles.some(a => a.url && a.url.includes('youtube.com'));
     const videoBtn = document.querySelector('.sort-pill[data-sort="video"]');
     if (videoBtn) videoBtn.style.display = hasVideos ? '' : 'none';
+
     if (currentSort === 'video') {
       articles = articles.filter(a => a.url && a.url.includes('youtube.com'));
     }
-    renderBoard(articles);
+
+    loadedArticles = loadedArticles.concat(articles);
+    renderBoard(loadedArticles);
   } catch {
-    document.getElementById('content').innerHTML =
-      '<p class="empty">Error al cargar. Intenta refrescar.</p>';
+    if (!loadedArticles.length) {
+      document.getElementById('content').innerHTML =
+        '<p class="empty">Error al cargar. Intenta refrescar.</p>';
+    }
+  } finally {
+    isLoadingMore = false;
   }
 }
 
@@ -292,15 +314,7 @@ function openVideoModal(videoId) {
   });
 }
 
-function renderBoard(articles) {
-  const box = document.getElementById('content');
-
-  if (!articles.length) {
-    box.innerHTML = '<p class="empty">Sin noticias a\u00fan. Esperando primer fetch.</p>';
-    return;
-  }
-
-  // Cluster multi-source articles into single cards
+function clusterArticles(articles) {
   const clusterMap = new Map();
   const solo = [];
 
@@ -339,47 +353,128 @@ function renderBoard(articles) {
     });
   }
 
-  const currentLayout = getLayout();
-  const visible = cards.slice(0, currentLayout.length);
+  return cards;
+}
 
-  box.innerHTML = `<div class="board">${visible.map((a, i) => {
-    const layout = currentLayout[i] || currentLayout[currentLayout.length - 1];
-    const s = a.score || 0;
+function renderCard(a, layout, i) {
+  const s = a.score || 0;
+  const titleRem = s >= 60 ? Math.max(layout.titleRem, 1.8) : s > 0 ? Math.max(layout.titleRem, 1.2) : layout.titleRem;
+  const fw = s >= 60 ? 700 : s > 0 ? 600 : layout.fw;
+  const dark = isDark();
+  const tc = s >= 60 ? (dark ? '#fff' : '#1a1a1a') : s > 0 ? (dark ? '#eee' : '#222') : (dark ? layout.color : (i < 6 ? '#333' : '#555'));
 
-    const titleRem = s >= 60 ? Math.max(layout.titleRem, 1.8) : s > 0 ? Math.max(layout.titleRem, 1.2) : layout.titleRem;
-    const fw = s >= 60 ? 700 : s > 0 ? 600 : layout.fw;
-    const dark = isDark();
-    const tc = s >= 60 ? (dark ? '#fff' : '#1a1a1a') : s > 0 ? (dark ? '#eee' : '#222') : (dark ? layout.color : (i < 6 ? '#333' : '#555'));
-
-    const badge = s >= 60
-      ? '<div class="badge badge-hot">HOT</div>'
-      : s > 0
-        ? '<div class="badge badge-multi">multi-source</div>'
-        : '';
-
-    const others = a._others && a._others.length
-      ? `<div class="cluster-sources">${a._others.map(src => sourceTag(src)).join('')}</div>`
+  const badge = s >= 60
+    ? '<div class="badge badge-hot">HOT</div>'
+    : s > 0
+      ? '<div class="badge badge-multi">multi-source</div>'
       : '';
 
-    const isVideo = isYouTube(a.url);
-    const videoId = isVideo ? getYouTubeId(a.url) : null;
-    const videoIcon = isVideo ? '<span class="video-icon">&#9654;</span>' : '';
-    const titleClick = isVideo && videoId
-      ? `onclick="event.preventDefault();openVideoModal('${videoId}')" href="${esc(a.url)}"`
-      : `href="${esc(a.url)}" target="_blank" rel="noopener"`;
+  const others = a._others && a._others.length
+    ? `<div class="cluster-sources">${a._others.map(src => sourceTag(src)).join('')}</div>`
+    : '';
 
-    return `<article class="card ${layout.cls} ${isVideo ? 'card-video' : ''}"
-      style="grid-column:${layout.col};grid-row:${layout.row}">
-      ${badge}
-      <a class="card-title" ${titleClick}
-         style="font-size:${titleRem}rem;font-weight:${fw};color:${tc};-webkit-line-clamp:${layout.clamp};line-clamp:${layout.clamp}">${videoIcon}${esc(a.title)}</a>
-      <div class="card-footer">
-        ${sourceTag(a.source)}
-        ${a.published_at ? `<span class="card-time">${timeAgo(a.published_at)}</span>` : ''}
-      </div>
-      ${others}
-    </article>`;
+  const isVideo = isYouTube(a.url);
+  const videoId = isVideo ? getYouTubeId(a.url) : null;
+  const videoIcon = isVideo ? '<span class="video-icon">&#9654;</span>' : '';
+  const titleClick = isVideo && videoId
+    ? `onclick="event.preventDefault();openVideoModal('${videoId}')" href="${esc(a.url)}"`
+    : `href="${esc(a.url)}" target="_blank" rel="noopener"`;
+
+  const gridStyle = layout.col ? `grid-column:${layout.col};grid-row:${layout.row}` : '';
+
+  return `<article class="card ${layout.cls} ${isVideo ? 'card-video' : ''}"
+    ${gridStyle ? `style="${gridStyle}"` : ''}>
+    ${badge}
+    <a class="card-title" ${titleClick}
+       style="font-size:${titleRem}rem;font-weight:${fw};color:${tc};-webkit-line-clamp:${layout.clamp};line-clamp:${layout.clamp}">${videoIcon}${esc(a.title)}</a>
+    <div class="card-footer">
+      ${sourceTag(a.source)}
+      ${a.published_at ? `<span class="card-time">${timeAgo(a.published_at)}</span>` : ''}
+    </div>
+    ${others}
+  </article>`;
+}
+
+// Repeating collage patterns for extra cards (after the initial board)
+const EXTRA_12 = [
+  { cls: 'feature', titleRem: 1.15, fw: 600, clamp: 3, color: '#eee', span: 2 },
+  { cls: 'compact', titleRem: 0.85, fw: 500, clamp: 3, color: '#ccc', span: 1 },
+  { cls: 'compact', titleRem: 0.85, fw: 500, clamp: 3, color: '#ccc', span: 1 },
+  { cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa', span: 1 },
+  { cls: 'feature', titleRem: 1.1,  fw: 600, clamp: 3, color: '#ddd', span: 2 },
+  { cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa', span: 1 },
+  { cls: 'compact', titleRem: 0.9,  fw: 500, clamp: 3, color: '#ccc', span: 1 },
+  { cls: 'feature', titleRem: 1.05, fw: 600, clamp: 3, color: '#ddd', span: 2 },
+  { cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa', span: 1 },
+];
+
+const EXTRA_6 = [
+  { cls: 'feature', titleRem: 1.0,  fw: 600, clamp: 3, color: '#eee', span: 2 },
+  { cls: 'compact', titleRem: 0.85, fw: 500, clamp: 3, color: '#ccc', span: 1 },
+  { cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa', span: 1 },
+  { cls: 'feature', titleRem: 0.95, fw: 600, clamp: 3, color: '#ddd', span: 2 },
+  { cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa', span: 1 },
+  { cls: 'compact', titleRem: 0.85, fw: 400, clamp: 3, color: '#aaa', span: 1 },
+];
+
+const EXTRA_MOBILE = [
+  { cls: 'feature', titleRem: 1.0,  fw: 600, clamp: 4, color: '#eee', span: 1 },
+  { cls: 'compact', titleRem: 0.9,  fw: 500, clamp: 3, color: '#ccc', span: 1 },
+  { cls: 'compact', titleRem: 0.9,  fw: 400, clamp: 3, color: '#aaa', span: 1 },
+  { cls: 'compact', titleRem: 0.9,  fw: 400, clamp: 3, color: '#aaa', span: 1 },
+  { cls: 'feature', titleRem: 0.95, fw: 600, clamp: 4, color: '#ddd', span: 1 },
+  { cls: 'compact', titleRem: 0.9,  fw: 400, clamp: 3, color: '#aaa', span: 1 },
+];
+
+function getExtraPattern() {
+  const w = window.innerWidth;
+  if (w <= 768) return EXTRA_MOBILE;
+  if (w <= 1100) return EXTRA_6;
+  return EXTRA_12;
+}
+
+function getExtraCols() {
+  const w = window.innerWidth;
+  if (w <= 768) return 1;
+  if (w <= 1100) return 3;
+  return 4;
+}
+
+function renderBoard(articles) {
+  const box = document.getElementById('content');
+
+  if (!articles.length) {
+    box.innerHTML = '<p class="empty">Sin noticias a\u00fan. Esperando primer fetch.</p>';
+    return;
+  }
+
+  const cards = clusterArticles(articles);
+  const currentLayout = getLayout();
+  const collageCards = cards.slice(0, currentLayout.length);
+  const extraCards = cards.slice(currentLayout.length);
+
+  let html = `<div class="board">${collageCards.map((a, i) => {
+    const layout = currentLayout[i] || currentLayout[currentLayout.length - 1];
+    return renderCard(a, layout, i);
   }).join('')}</div>`;
+
+  if (extraCards.length) {
+    const pattern = getExtraPattern();
+    const cols = getExtraCols();
+    html += `<div class="board-extra" style="grid-template-columns:repeat(${cols}, 1fr)">${extraCards.map((a, i) => {
+      const p = pattern[i % pattern.length];
+      const layout = { cls: p.cls, titleRem: p.titleRem, fw: p.fw, clamp: p.clamp, color: p.color };
+      const spanStyle = p.span > 1 ? `style="grid-column:span ${p.span}"` : '';
+      return `<div ${spanStyle}>${renderCard(a, layout, i + currentLayout.length)}</div>`;
+    }).join('')}</div>`;
+  }
+
+  const hasMore = loadedArticles.length < totalCount;
+  if (hasMore) {
+    html += '<div class="load-more-sentinel"></div>';
+  }
+
+  box.innerHTML = html;
 }
 
 function timeAgo(iso) {
@@ -402,11 +497,28 @@ function esc(str) {
 }
 
 loadNews();
-setInterval(loadNews, 5 * 60 * 1000);
+setInterval(() => loadNews(false), 5 * 60 * 1000);
 
 // Re-render on resize to adapt collage layout
 let resizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(loadNews, 200);
+  resizeTimer = setTimeout(() => renderBoard(loadedArticles), 200);
 });
+
+// Infinite scroll using IntersectionObserver
+const scrollObserver = new IntersectionObserver((entries) => {
+  if (entries[0].isIntersecting && !isLoadingMore && loadedArticles.length < totalCount) {
+    isLoadingMore = true;
+    loadNews(true);
+  }
+}, { rootMargin: '400px' });
+
+// Re-observe sentinel after each render
+const contentBox = document.getElementById('content');
+const contentObserver = new MutationObserver(() => {
+  const sentinel = contentBox.querySelector('.load-more-sentinel');
+  scrollObserver.disconnect();
+  if (sentinel) scrollObserver.observe(sentinel);
+});
+contentObserver.observe(contentBox, { childList: true, subtree: true });
