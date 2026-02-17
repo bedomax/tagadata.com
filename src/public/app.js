@@ -213,7 +213,15 @@ async function loadNews(append) {
       renderTags(data.tags || []);
       renderLastUpdated(data.last_updated);
     }
-    totalCount = data.count || 0;
+    // Use the smaller of reported count vs cache size to avoid endless scroll
+    const reportedCount = data.count || 0;
+    const receivedCount = data.articles.length;
+    // If we got fewer articles than requested, there are no more pages
+    if (receivedCount < PAGE_SIZE && currentSort !== 'video') {
+      totalCount = loadedArticles.length + receivedCount;
+    } else {
+      totalCount = reportedCount;
+    }
     let articles = data.articles;
 
     // If server just started and has no articles yet, retry after a few seconds
@@ -435,9 +443,9 @@ function getExtraPattern() {
 
 function getExtraCols() {
   const w = window.innerWidth;
-  if (w <= 768) return 1;
-  if (w <= 1100) return 3;
-  return 4;
+  if (w <= 768) return 'mobile';
+  if (w <= 1100) return 'tablet';
+  return 'desktop';
 }
 
 function renderBoard(articles) {
@@ -460,12 +468,12 @@ function renderBoard(articles) {
 
   if (extraCards.length) {
     const pattern = getExtraPattern();
-    const cols = getExtraCols();
-    html += `<div class="board-extra" style="grid-template-columns:repeat(${cols}, 1fr)">${extraCards.map((a, i) => {
+    const colClass = getExtraCols();
+    html += `<div class="board-extra board-extra--${colClass}">${extraCards.map((a, i) => {
       const p = pattern[i % pattern.length];
       const layout = { cls: p.cls, titleRem: p.titleRem, fw: p.fw, clamp: p.clamp, color: p.color };
-      const spanStyle = p.span > 1 ? `style="grid-column:span ${p.span}"` : '';
-      return `<div ${spanStyle}>${renderCard(a, layout, i + currentLayout.length)}</div>`;
+      const spanClass = p.span > 1 ? `class="span-${p.span}"` : '';
+      return `<div ${spanClass}>${renderCard(a, layout, i + currentLayout.length)}</div>`;
     }).join('')}</div>`;
   }
 

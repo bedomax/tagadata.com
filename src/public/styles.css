@@ -383,9 +383,15 @@ h1 .accent { color: #f97316; }
   padding-top: 5px;
 }
 
+.board-extra--desktop { grid-template-columns: repeat(4, 1fr); }
+.board-extra--tablet  { grid-template-columns: repeat(3, 1fr); }
+.board-extra--mobile  { grid-template-columns: 1fr; }
+
 .board-extra > div {
   min-width: 0;
 }
+
+.board-extra .span-2 { grid-column: span 2; }
 
 .board-extra .card {
   height: 100%;
