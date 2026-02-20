@@ -125,6 +125,10 @@ app.get('/privacy', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
 });
 
+app.get('/privacy-en', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'privacy-en.html'));
+});
+
 // Start server immediately — DB init and cache build in background
 app.listen(PORT, () => {
   console.log(`tagadata.com running at http://localhost:${PORT}`);
