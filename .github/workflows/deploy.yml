@@ -47,7 +47,8 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --min-instances 1 \
-            --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}"
+            --add-cloudsql-instances bedomax:us-central1:tagadata-db \
+            --set-secrets "DATABASE_URL=DATABASE_URL:latest"
 
       - name: Deploy fetch job
         run: |
@@ -58,7 +59,8 @@ jobs:
               --region ${{ env.REGION }} \
               --command "node" \
               --args "src/fetch.js" \
-              --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+              --add-cloudsql-instances bedomax:us-central1:tagadata-db \
+              --set-secrets "DATABASE_URL=DATABASE_URL:latest" \
               --task-timeout 120s \
               --max-retries 1
           else
@@ -67,7 +69,8 @@ jobs:
               --region ${{ env.REGION }} \
               --command "node" \
               --args "src/fetch.js" \
-              --set-env-vars "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+              --add-cloudsql-instances bedomax:us-central1:tagadata-db \
+              --set-secrets "DATABASE_URL=DATABASE_URL:latest" \
               --task-timeout 120s \
               --max-retries 1
           fi
