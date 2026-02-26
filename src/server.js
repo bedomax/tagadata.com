@@ -4,6 +4,20 @@ const db = require('./db');
 const { getNews, getCount, getLastFetchAt } = db;
 const { extractTags, getArticleIdsByTag } = require('./tags');
 
+/**
+ * Deduplicate articles by cluster_id, keeping one representative per cluster.
+ * Articles without a cluster (score=0, cluster_id=null) are kept as-is.
+ */
+function deduplicateByCluster(articles) {
+  const seen = new Set();
+  return articles.filter((a) => {
+    if (!a.cluster_id || a.score === 0) return true;
+    if (seen.has(a.cluster_id)) return false;
+    seen.add(a.cluster_id);
+    return true;
+  });
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const CACHE_REFRESH_MS = 60 * 1000; // Refresh cache from DB every 60s
@@ -25,7 +39,12 @@ async function rebuildCache() {
         extractTags(72, 15, cc),
         getCount({ country: cc }),
       ]);
-      newsCache[cc] = { articlesByDate, articlesByScore, tags, count };
+      newsCache[cc] = {
+        articlesByDate: deduplicateByCluster(articlesByDate),
+        articlesByScore: deduplicateByCluster(articlesByScore),
+        tags,
+        count,
+      };
     } catch (err) {
       console.error(`[Cache] Error building cache for ${cc}:`, err.message);
     }

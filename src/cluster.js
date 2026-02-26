@@ -1,7 +1,9 @@
 const fuzz = require('fuzzball');
 const { getAllRecent, updateClusters } = require('./db');
 
-const SIMILARITY_THRESHOLD = 70;
+// Both scores must pass to avoid false positives
+const SORT_THRESHOLD = 60;  // token_sort_ratio minimum
+const SET_THRESHOLD = 65;   // token_set_ratio minimum
 const HOURS_BACK = 72;
 
 // Points per unique source covering the same story
@@ -50,11 +52,15 @@ async function clusterAndScore() {
     for (let j = i + 1; j < normalized.length; j++) {
       if (assigned.has(j)) continue;
 
-      // Skip if same source — we want cross-source matches
-      if (normalized[j].source === normalized[i].source) continue;
+      // Compare against all current cluster members, not just the pivot
+      const matchesCluster = cluster.some((member) => {
+        if (member.source === normalized[j].source) return false;
+        const sort = fuzz.token_sort_ratio(member._norm, normalized[j]._norm);
+        const set = fuzz.token_set_ratio(member._norm, normalized[j]._norm);
+        return sort >= SORT_THRESHOLD && set >= SET_THRESHOLD;
+      });
 
-      const score = fuzz.token_sort_ratio(normalized[i]._norm, normalized[j]._norm);
-      if (score >= SIMILARITY_THRESHOLD) {
+      if (matchesCluster) {
         cluster.push(normalized[j]);
         assigned.add(j);
       }
