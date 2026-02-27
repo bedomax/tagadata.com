@@ -35,7 +35,29 @@ async function clusterAndScore() {
   const articles = await getAllRecent(HOURS_BACK);
   if (!articles.length) return { clusters: 0, scored: 0 };
 
-  const normalized = articles.map((a) => ({
+  // Step 1: deduplicate within the same source by title similarity
+  // Keeps only the most recent article when two from the same source are near-identical
+  const dedupedWithinSource = [];
+  const skipIds = new Set();
+
+  for (let i = 0; i < articles.length; i++) {
+    if (skipIds.has(articles[i].id)) continue;
+    dedupedWithinSource.push(articles[i]);
+    const normI = normalizeTitle(articles[i].title);
+    for (let j = i + 1; j < articles.length; j++) {
+      if (skipIds.has(articles[j].id)) continue;
+      if (articles[j].source !== articles[i].source) continue;
+      const normJ = normalizeTitle(articles[j].title);
+      const sort = fuzz.token_sort_ratio(normI, normJ);
+      const set = fuzz.token_set_ratio(normI, normJ);
+      if (sort >= SORT_THRESHOLD && set >= SET_THRESHOLD) {
+        // Keep the more recent one (articles are already sorted by published_at DESC)
+        skipIds.add(articles[j].id);
+      }
+    }
+  }
+
+  const normalized = dedupedWithinSource.map((a) => ({
     ...a,
     _norm: normalizeTitle(a.title),
   }));
