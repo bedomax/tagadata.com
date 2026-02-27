@@ -246,7 +246,10 @@ async function loadNews(append) {
       articles = articles.filter(a => a.url && a.url.includes('youtube.com'));
     }
 
-    loadedArticles = loadedArticles.concat(articles);
+    // Deduplicate by URL to avoid showing the same article twice
+    const seenUrls = new Set(loadedArticles.map(a => a.url));
+    const newArticles = articles.filter(a => !seenUrls.has(a.url));
+    loadedArticles = loadedArticles.concat(newArticles);
     renderBoard(loadedArticles);
   } catch {
     if (!loadedArticles.length) {
