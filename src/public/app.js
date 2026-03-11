@@ -10,6 +10,7 @@ const PAGE_SIZE = 30;
 const COUNTRIES = [
   { code: 'cl', flag: '\u{1F1E8}\u{1F1F1}', name: 'Chile' },
   { code: 'ec', flag: '\u{1F1EA}\u{1F1E8}', name: 'Ecuador' },
+  { code: 'ma', flag: '\u{1F333}', name: 'Medio Ambiente' },
 ];
 
 const SOURCE_COLORS_BY_COUNTRY = {
@@ -24,6 +25,11 @@ const SOURCE_COLORS_BY_COUNTRY = {
     'GK': 'gk', 'La Barra Espaciadora': 'barra', 'Plan V': 'planv',
     'Confirmado': 'confirm',
     'Ecuavisa': 'ecuavisa', 'Teleamazonas': 'teleamaz',
+  },
+  ma: {
+    'Mongabay Latam': 'mongabay', 'Ladera Sur': 'laderasur', 'Planeta Futuro': 'planetafuturo',
+    'EFE Verde': 'efeverde', 'Climática': 'climatica', 'Ballena Blanca': 'ballena',
+    'InfoAmazonia': 'infoamazonia', 'Endémico': 'endemico',
   },
 };
 

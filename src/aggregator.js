@@ -27,6 +27,15 @@ const allSources = [
   // Ecuador — YouTube
   require('./sources/ec/ecuavisa'),
   require('./sources/ec/teleamazonas'),
+  // Medio Ambiente — RSS
+  require('./sources/ma/mongabay'),
+  require('./sources/ma/laderasur'),
+  require('./sources/ma/planetafuturo'),
+  require('./sources/ma/efeverde'),
+  require('./sources/ma/climatica'),
+  require('./sources/ma/ballenaBlanca'),
+  require('./sources/ma/infoamazonia'),
+  require('./sources/ma/endemico'),
 ];
 
 function getSourcesByCountry(country) {

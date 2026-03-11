@@ -22,7 +22,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const CACHE_REFRESH_MS = 60 * 1000; // Refresh cache from DB every 60s
 
-const VALID_COUNTRIES = ['cl', 'ec'];
+const VALID_COUNTRIES = ['cl', 'ec', 'ma'];
 
 // ---- In-memory cache ----
 // Pre-built responses served from memory. Refreshed every 60s from DB.
