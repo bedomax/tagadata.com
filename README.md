@@ -28,6 +28,20 @@ Only displays: headline, source, link, and time. No full article content.
 | Plan V | Investigative | RSS |
 | Confirmado | Independent | RSS |
 
+### Medio Ambiente 🌳
+Environmental journalism in Spanish — Latin America and Spain.
+
+| Source | Focus | Feed |
+|---|---|---|
+| Mongabay Latam | Amazon, biodiversity, indigenous peoples, mining | RSS |
+| Ladera Sur | Chilean nature, conservation, outdoor culture | RSS |
+| Planeta Futuro (El País) | Sustainability, climate change, energy transition | RSS |
+| EFE Verde | Climate, biodiversity, public policy (wire agency) | RSS |
+| Climática | Climate crisis, energy, environmental policy | RSS |
+| Ballena Blanca | Investigative: energy, natural resources, climate economy | RSS |
+| InfoAmazonia | Data journalism on the Amazon — maps and analysis | RSS |
+| Endémico | Chilean biodiversity and conservation | RSS |
+
 ## Quick Start
 
 ```bash
@@ -42,7 +56,7 @@ Open http://localhost:3000. The server fetches all RSS feeds on startup and refr
 | Endpoint | Method | Description |
 |---|---|---|
 | `/` | GET | Collage board UI |
-| `/api/news?country=cl` | GET | News filtered by country (`cl`, `ec`) |
+| `/api/news?country=cl` | GET | News filtered by country (`cl`, `ec`, `ma`) |
 | `/api/news?tag=gobierno` | GET | Filter by trending tag |
 | `/api/news?sort=score` | GET | Sort by trending score |
 | `/api/news?limit=15&offset=0` | GET | Pagination |
