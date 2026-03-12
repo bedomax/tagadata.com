@@ -1,5 +1,7 @@
 const express = require('express');
 const path = require('path');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const db = require('./db');
 const { getNews, getCount, getLastFetchAt } = db;
 const { extractTags, getArticleIdsByTag } = require('./tags');
@@ -20,6 +22,15 @@ function deduplicateByCluster(articles) {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.use(helmet());
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 const CACHE_REFRESH_MS = 60 * 1000; // Refresh cache from DB every 60s
 
 const VALID_COUNTRIES = ['cl', 'ec', 'ma'];
@@ -58,7 +69,7 @@ async function rebuildCache() {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // API: Detect country from IP
-app.get('/api/geo', async (req, res) => {
+app.get('/api/geo', apiLimiter, async (req, res) => {
   try {
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
       || req.socket.remoteAddress;
@@ -78,7 +89,7 @@ app.get('/api/geo', async (req, res) => {
 });
 
 // API: Get news articles (country-filtered)
-app.get('/api/news', async (req, res) => {
+app.get('/api/news', apiLimiter, async (req, res) => {
   try {
     const { source, tag, limit, offset, sort, country } = req.query;
     const cc = VALID_COUNTRIES.includes(country) ? country : 'cl';
@@ -95,7 +106,7 @@ app.get('/api/news', async (req, res) => {
       }
       const articles = await getNews({
         country: cc, ids,
-        limit: limit ? parseInt(limit, 10) : 15,
+        limit: limit ? Math.min(parseInt(limit, 10), 100) : 15,
         offset: offset ? parseInt(offset, 10) : 0,
         sort: sort === 'score' ? 'score' : 'date',
       });
@@ -121,7 +132,7 @@ app.get('/api/news', async (req, res) => {
     const [articles, tags, count] = await Promise.all([
       getNews({
         source: source || undefined, country: cc,
-        limit: limit ? parseInt(limit, 10) : 15,
+        limit: limit ? Math.min(parseInt(limit, 10), 100) : 15,
         offset: offset ? parseInt(offset, 10) : 0,
         sort: sort === 'score' ? 'score' : 'date',
       }),
