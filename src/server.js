@@ -161,17 +161,21 @@ app.get('/privacy-en', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacy-en.html'));
 });
 
-// Start server immediately — DB init and cache build in background
-app.listen(PORT, () => {
-  console.log(`tagadata.com running at http://localhost:${PORT}`);
+// Export app for testing — only start the server when run directly
+module.exports = { app, rebuildCache };
 
-  db.init()
-    .then(() => rebuildCache())
-    .then(() => console.log('[Server] Ready — serving from cache'))
-    .catch((err) => console.error('[Server] Startup error:', err));
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`tagadata.com running at http://localhost:${PORT}`);
 
-  // Refresh cache every 60s to pick up new articles from the fetch job
-  setInterval(() => {
-    rebuildCache().catch((err) => console.error('[Cache] Refresh error:', err));
-  }, CACHE_REFRESH_MS);
-});
+    db.init()
+      .then(() => rebuildCache())
+      .then(() => console.log('[Server] Ready — serving from cache'))
+      .catch((err) => console.error('[Server] Startup error:', err));
+
+    // Refresh cache every 60s to pick up new articles from the fetch job
+    setInterval(() => {
+      rebuildCache().catch((err) => console.error('[Cache] Refresh error:', err));
+    }, CACHE_REFRESH_MS);
+  });
+}
