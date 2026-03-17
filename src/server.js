@@ -5,6 +5,7 @@ const rateLimit = require('express-rate-limit');
 const db = require('./db');
 const { getNews, getCount, getLastFetchAt } = db;
 const { extractTags, getArticleIdsByTag } = require('./tags');
+const { parseNewsParams } = require('./validate');
 
 /**
  * Deduplicate articles by cluster_id, keeping the most recent per cluster.
@@ -25,11 +26,17 @@ const PORT = process.env.PORT || 3000;
 
 app.use(helmet());
 
+// Trust only the first proxy (Cloud Run / Render set exactly one hop)
+app.set('trust proxy', 1);
+
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 60,
   standardHeaders: true,
   legacyHeaders: false,
+  // Use the real IP resolved by express after trust proxy, not raw X-Forwarded-For
+  keyGenerator: (req) => req.ip,
+  skip: () => false,
 });
 const CACHE_REFRESH_MS = 60 * 1000; // Refresh cache from DB every 60s
 
@@ -90,9 +97,14 @@ app.get('/api/geo', apiLimiter, async (req, res) => {
 
 // API: Get news articles (country-filtered)
 app.get('/api/news', apiLimiter, async (req, res) => {
+  let cc, sort, lim, off, tag, source;
   try {
-    const { source, tag, limit, offset, sort, country } = req.query;
-    const cc = VALID_COUNTRIES.includes(country) ? country : 'cl';
+    ({ cc, sort, lim, off, tag, source } = parseNewsParams(req.query, VALID_COUNTRIES));
+  } catch (err) {
+    return res.status(err.statusCode || 400).json({ error: err.message });
+  }
+
+  try {
     const cached = newsCache[cc];
 
     // Tag filter requires DB lookup
@@ -104,12 +116,7 @@ app.get('/api/news', apiLimiter, async (req, res) => {
           country: cc, last_updated: lastFetchAt,
         });
       }
-      const articles = await getNews({
-        country: cc, ids,
-        limit: limit ? Math.min(parseInt(limit, 10), 100) : 15,
-        offset: offset ? parseInt(offset, 10) : 0,
-        sort: sort === 'score' ? 'score' : 'date',
-      });
+      const articles = await getNews({ country: cc, ids, limit: lim, offset: off, sort });
       return res.json({
         articles, tags: cached?.tags || [], count: ids.length,
         country: cc, last_updated: lastFetchAt,
@@ -117,10 +124,8 @@ app.get('/api/news', apiLimiter, async (req, res) => {
     }
 
     // Serve from cache — instant response
-    if (cached) {
+    if (cached && !source) {
       const articles = sort === 'score' ? cached.articlesByScore : cached.articlesByDate;
-      const lim = limit ? parseInt(limit, 10) : 15;
-      const off = offset ? parseInt(offset, 10) : 0;
       return res.json({
         articles: articles.slice(off, off + lim),
         tags: cached.tags, count: cached.count,
@@ -128,14 +133,9 @@ app.get('/api/news', apiLimiter, async (req, res) => {
       });
     }
 
-    // Cache miss — query DB directly
+    // Cache miss or source filter — query DB directly
     const [articles, tags, count] = await Promise.all([
-      getNews({
-        source: source || undefined, country: cc,
-        limit: limit ? Math.min(parseInt(limit, 10), 100) : 15,
-        offset: offset ? parseInt(offset, 10) : 0,
-        sort: sort === 'score' ? 'score' : 'date',
-      }),
+      getNews({ source: source || undefined, country: cc, limit: lim, offset: off, sort }),
       extractTags(72, 15, cc),
       getCount({ source: source || undefined, country: cc }),
     ]);
@@ -143,7 +143,7 @@ app.get('/api/news', apiLimiter, async (req, res) => {
     res.json({ articles, tags, count, country: cc, last_updated: lastFetchAt });
   } catch (err) {
     console.error('[API] /api/news error:', err.message);
-    res.status(500).json({ articles: [], tags: [], count: 0, error: err.message });
+    res.status(500).json({ articles: [], tags: [], count: 0 });
   }
 });
 

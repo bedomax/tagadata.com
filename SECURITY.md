@@ -19,10 +19,25 @@ All HTTP responses include security headers via [helmet](https://helmetjs.github
 ### Rate Limiting
 API endpoints `/api/news` and `/api/geo` are limited to **60 requests per minute per IP** using `express-rate-limit`. Exceeding this limit returns HTTP 429.
 
-### Input Validation
-- `country` parameter is validated against a whitelist (`cl`, `ec`, `ma`)
-- `sort` parameter only accepts `score`, `date`, or `video`
-- `limit` parameter is capped at 100 to prevent DB overload
+The server sets `trust proxy: 1` so Express uses the real IP from the single trusted proxy hop (Cloud Run). The rate limiter uses `req.ip` — not the raw `X-Forwarded-For` header — which prevents attackers from spoofing their IP by injecting a fake `X-Forwarded-For` value to bypass the limit.
+
+### Input Validation (`src/validate.js`)
+All query parameters for `GET /api/news` are parsed through `parseNewsParams()` before any DB access:
+
+| Parameter | Validation | Limit |
+|-----------|-----------|-------|
+| `country` | Whitelist (`cl`, `ec`, `ma`) | — |
+| `sort` | Whitelist (`score`, `date`) | — |
+| `limit` | Integer, clamped | 1–100 |
+| `offset` | Integer, clamped | 0–10 000 |
+| `tag` | Regex — only letters, digits, spaces, hyphens, accented chars | 50 chars |
+| `source` | Same regex as tag | 100 chars |
+
+Invalid `tag` or `source` strings return **HTTP 400** immediately, before any DB query is made. This prevents:
+- **DoS via expensive tag lookups** with crafted long strings
+- **SQL metacharacter injection** through string parameters
+- **Giant offset attacks** that force full table scans
+
 - Client-side XSS protection via `esc()` helper for all user-visible content
 
 ### Database
@@ -50,6 +65,7 @@ API endpoints `/api/news` and `/api/geo` are limited to **60 requests per minute
 | RSS feed validation | None | URLs from feeds are not validated; relies on source trustworthiness |
 | IP geolocation | External (ip-api.com) | Free tier: 45 req/min. Fails silently to default country `cl` |
 | Request audit log | None | No per-request logging beyond errors |
+| Distributed DoS | Partial | Single-server rate limit; no CDN/WAF layer |
 
 ---
 
